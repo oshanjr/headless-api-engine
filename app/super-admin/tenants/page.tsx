@@ -46,12 +46,10 @@ export default async function MasterAgencyDashboard() {
   }
 
   return (
-    <div className="min-h-screen font-sans bg-slate-950 text-slate-300 pb-20 selection:bg-cyan-500/30">
+    <div className="w-full">
        
-       <div className="absolute top-0 inset-x-0 h-[500px] bg-gradient-to-b from-cyan-900/20 via-slate-900/5 to-transparent pointer-events-none z-0"></div>
-
        {/* High End Dark Corporate Dashboard Header */}
-       <header className="border-b border-slate-800/60 pb-12 pt-16 px-6 relative z-10 backdrop-blur-md bg-slate-950/50">
+       <header className="border-b border-slate-800/60 pb-12 pt-6 px-6 relative z-10 bg-slate-950/20">
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-end justify-between gap-6">
              <div>
                 <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white mb-3 flex items-center gap-4">

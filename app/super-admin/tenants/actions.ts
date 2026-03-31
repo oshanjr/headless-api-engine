@@ -33,8 +33,12 @@ export async function renewSubscription(id: string) {
 
 export async function deleteTenant(id: string) {
   try {
-    // Purges tenant from existence
+    // 1. Purge all related orders first to avoid Foreign Key Constraint violations
+    await query(`DELETE FROM orders WHERE tenant_id = $1`, [id]);
+    
+    // 2. Purge the tenant from existence
     await query(`DELETE FROM tenants WHERE id = $1`, [id]);
+    
     revalidatePath('/super-admin/tenants');
     return { success: true };
   } catch (err: any) {
