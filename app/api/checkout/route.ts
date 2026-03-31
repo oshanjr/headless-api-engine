@@ -15,6 +15,30 @@ export async function POST(req: Request) {
       );
     }
 
+    // [SECURITY GUARD]: Check if the tenant is active and subscription is active
+    const tenantCheckRes = await query(`
+      SELECT is_active, subscription_expires_at 
+      FROM tenants 
+      WHERE id = $1
+      LIMIT 1
+    `, [tenant_id]);
+    
+    const tenantStatus = tenantCheckRes.rows[0];
+    
+    if (!tenantStatus) {
+       return NextResponse.json({ error: "Invalid System ID" }, { status: 404 });
+    }
+
+    const { is_active, subscription_expires_at } = tenantStatus;
+    const isExpired = subscription_expires_at ? new Date(subscription_expires_at) < new Date() : false;
+
+    if (!is_active || isExpired) {
+      return NextResponse.json(
+         { error: "Your account is suspended. Please contact the administrator to settle your monthly fee." }, 
+         { status: 403 }
+      );
+    }
+
     const settingsRes = await query(`SELECT current_fuel_price, base_fare_1km, fuel_efficiency FROM global_settings LIMIT 1`);
     const settings = settingsRes.rows[0];
 
