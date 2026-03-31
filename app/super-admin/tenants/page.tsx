@@ -1,12 +1,11 @@
 import { query } from '../../../lib/db';
 import { revalidatePath } from 'next/cache';
-import crypto from 'crypto';
 
 export default async function MasterAgencyDashboard() {
   
   // 1. Fetch current live SaaS tenants securely mapping to Admin boundaries
   const tenantRes = await query(
-    'SELECT id, public_api_key, restaurant_name, domain, primary_color, created_at FROM tenants ORDER BY created_at DESC'
+    'SELECT id, restaurant_name, domain, primary_color, created_at FROM tenants ORDER BY created_at DESC'
   );
   
   const tenants = tenantRes.rows;
@@ -15,29 +14,34 @@ export default async function MasterAgencyDashboard() {
   async function onboardTenant(formData: FormData) {
     'use server';
     
-    const restaurantName = formData.get('restaurant_name')?.toString();
-    const authorizedDomain = formData.get('authorized_domain')?.toString();
+    const name = formData.get('restaurant_name')?.toString();
+    const domain = formData.get('authorized_domain')?.toString();
 
     const { query } = await import('../../../lib/db');
     const { revalidatePath } = await import('next/cache');
-    const cryptoInstance = await import('crypto');
 
-    if (!restaurantName || !authorizedDomain) {
+    if (!name || !domain) {
        throw new Error('Form execution missing required parameters.');
     }
 
-    // Generate strict 'pub_tenant_xyz' cryptographic security tokens natively preventing collisions!
-    const randomHex = cryptoInstance.randomBytes(4).toString('hex');
-    const pubTenantKey = `pub_tenant_${randomHex}`;
+    // 1. Generate the Public ID first natively via Math constraints
+    const publicId = `pub_tenant_${Math.random().toString(36).substring(2, 10)}`;
 
-    // Inject organically into PostgreSQL 
-    await query(`
-      INSERT INTO tenants (restaurant_name, domain, public_api_key, latitude, longitude)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [restaurantName, authorizedDomain, pubTenantKey, 7.0873, 79.9992]); // Fallback GPS for Master Dashboard
+    try {
+      // 2. IMPORTANT: Insert the generated string directly into the 'id' column
+      await query(
+        `INSERT INTO tenants (id, restaurant_name, domain, latitude, longitude) 
+         VALUES ($1, $2, $3, $4, $5)`,
+        [publicId, name, domain, 7.0873, 79.9992]
+      );
 
-    // Purge browser path to force Next.js to reconstruct the Database query internally
-    revalidatePath('/super-admin/tenants');
+      console.log(`[Super Admin]: Successfully onboarded ${name} with natively mapped ID ${publicId}`);
+      
+      // Refresh the page data logically
+      revalidatePath('/super-admin/tenants');
+    } catch (error: any) {
+      console.error("[Super Admin Error]:", error.message);
+    }
   }
 
   return (
@@ -50,7 +54,7 @@ export default async function MasterAgencyDashboard() {
                 <p className="text-slate-400 font-bold tracking-wide">Global Multi-Tenant Hub Configuration</p>
              </div>
              <div className="inline-flex items-center px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl shadow-inner text-sm font-mono font-bold text-emerald-400">
-                \uD83D\uDFE2 SYSTEM SECURE
+                \uD83D\uDFE2 SYSTEM SECURE (STRING MATCH)
              </div>
           </div>
        </header>
@@ -62,7 +66,7 @@ export default async function MasterAgencyDashboard() {
              <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-6">
                  <div>
                    <h2 className="text-2xl font-black tracking-tight text-slate-900">Onboard New Client</h2>
-                   <p className="text-slate-500 font-medium">Instantly generate Node dependencies and Public API security keys.</p>
+                   <p className="text-slate-500 font-medium">Instantly generate Node dependencies directly mapped into the Primary PostgreSQL UUID.</p>
                  </div>
                  <div className="hidden sm:flex w-12 h-12 rounded-full bg-blue-50 items-center justify-center text-blue-600 text-xl">
                     \u2795
@@ -112,7 +116,7 @@ export default async function MasterAgencyDashboard() {
           {/* Directory Module: Active Tenants Grid */}
           <section className="bg-white rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 border border-slate-100">
              <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                 <h2 className="text-lg font-black tracking-tight text-slate-900">Active Agency Tenants</h2>
+                 <h2 className="text-lg font-black tracking-tight text-slate-900">Active Pipeline Routes</h2>
                  <span className="bg-slate-200 text-slate-600 font-black px-3 py-1 rounded-full text-xs">{tenants.length} NODES</span>
              </div>
              <div className="overflow-x-auto">
@@ -121,8 +125,7 @@ export default async function MasterAgencyDashboard() {
                       <tr className="bg-slate-50 border-b border-slate-100">
                          <th className="py-4 px-6 text-xs font-black tracking-widest uppercase text-slate-400">Restaurant</th>
                          <th className="py-4 px-6 text-xs font-black tracking-widest uppercase text-slate-400">Network Domain</th>
-                         <th className="py-4 px-6 text-xs font-black tracking-widest uppercase text-slate-400">Public API Key</th>
-                         <th className="py-4 px-6 text-xs font-black tracking-widest uppercase text-slate-400 text-right">Identifier (UUID)</th>
+                         <th colSpan={2} className="py-4 px-6 text-xs font-black tracking-widest uppercase text-slate-400">Headless API Token (ID)</th>
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-50">
@@ -139,15 +142,10 @@ export default async function MasterAgencyDashboard() {
                                   {t.domain}
                                </a>
                             </td>
-                            <td className="py-4 px-6">
+                            <td colSpan={2} className="py-4 px-6">
                                <span className="font-mono text-sm bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 font-bold tracking-tight shadow-sm cursor-copy active:scale-95 transition-transform" 
-                                     title="Copy API Key to pass into WordPress / HTML Fetch Header">
-                                  {t.public_api_key || 'Missing Security Key'}
-                               </span>
-                            </td>
-                            <td className="py-4 px-6 text-right">
-                               <span className="font-mono text-[10px] text-slate-400 uppercase tracking-widest">
-                                  ...{t.id.split('-').pop()}
+                                     title="Instantly matches 'tenant_id' foreign keys on orders">
+                                  {t.id}
                                </span>
                             </td>
                          </tr>
@@ -155,7 +153,7 @@ export default async function MasterAgencyDashboard() {
                       {tenants.length === 0 && (
                          <tr>
                             <td colSpan={4} className="py-12 text-center text-slate-500 font-bold border-2 border-dashed border-slate-100 m-4 rounded-xl">
-                               No Headless Nodes explicitly defined in Database yet.
+                               No Postgres ID strings found inside architecture.
                             </td>
                          </tr>
                       )}
