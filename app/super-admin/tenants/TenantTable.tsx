@@ -94,7 +94,7 @@ export default function TenantTable({ tenants }: { tenants: TenantProps[] }) {
                      {/* Days Remaining Context */}
                      {t.subscription_expires_at ? (
                         <div className="text-xs font-mono text-slate-500">
-                          Exp: {new Date(t.subscription_expires_at).toLocaleDateString()}
+                          Exp: {new Intl.DateTimeFormat('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t.subscription_expires_at))}
                         </div>
                      ) : (
                         <div className="text-xs font-mono text-slate-500 italic">
